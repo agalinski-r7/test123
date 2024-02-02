@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #
+set -e
 
 pea_view_branches=$(git branch --list 'pea_view_automation*' | sed 's/^[* ] //' | sort -r )
 matching_branch_count=$(echo "$pea_view_branches" | grep -c .)
@@ -30,7 +31,7 @@ git checkout "$target_branch_name"
 # 
 ###############################################################################
 
-touch models/foo7
+touch models/foo10
 
 changes=$(git status models --porcelain)
 if [[ -z "$changes" ]]; then
@@ -60,12 +61,12 @@ if [[ -z "$pr_number" ]]; then
 else
     echo "PR from this branch already exists (#$pr_number)" 
 
-    is_it_a_draft_pr=$(gh pr list --state open --head "$target_branch_name" --base master --json isDraft -q '.[] | select(.isDraft==true)' | grep -q .)
-    if [[ $"is_it_a_draft_pr" ]]; then
-        echo "It's a draft PR, no changes needed"
-    else
+    draft_pr=$(gh pr list --state open --head "$target_branch_name" --base master --json isDraft -q '.[] | select(.isDraft==true)')
+    if [[ -z "$draft_pr" ]]; then
         echo "It's not a draft PR, demoting it before push to avoid automatic DBT build that could spill PII data"
-        gh pr edit "$pr_number" --draft
+        gh pr ready --undo "$pr_number" 
+    else
+        echo "It's a draft PR, no changes needed"
     fi
 
     echo "Pushing the change"
