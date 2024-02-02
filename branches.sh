@@ -30,7 +30,7 @@ git checkout "$target_branch_name"
 # 
 ###############################################################################
 
-touch models/foo6
+touch models/foo7
 
 changes=$(git status models --porcelain)
 if [[ -z "$changes" ]]; then
