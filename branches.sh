@@ -30,7 +30,7 @@ git checkout "$target_branch_name"
 # 
 ###############################################################################
 
-touch models/foo4
+touch models/foo5
 
 changes=$(git status models --porcelain)
 if [[ -z "$changes" ]]; then
@@ -45,25 +45,9 @@ git commit -m "PEA views automation: \n\nChanges:\n$changes"
 # ------------------
 echo "Checking if we have an existing PR to reuse: $target_branch_name->master"
 
-pr_exists=$(gh pr list --state open --head "$target_branch_name" --base master  | grep -q .)
+pr_number=$(gh pr list --state open --head "$target_branch_name" --base master --json number -q '.[] | .number')
 
-if [[ "$pr_exists" ]]; then
-    echo "PR from this branch already exists" 
-
-    is_it_a_draft_pr=$(gh pr list --state open --head "$target_branch_name" --base master --json isDraft -q '.[] | select(.isDraft==true)' | grep -q .)
-    if [[ $"is_it_a_draft_pr" ]]; then
-        echo "It's a draft PR, no changes needed"
-    else
-        echo "It's not a draft PR, demoting it before push to avoid automatic DBT build that could spill PII data"
-        pr_number=$(gh pr list --state open --head "$target_branch_name" --base master --json isDraft,number -q '.[] | select(.isDraft==true) | .number')
-        gh pr edit "$pr_number" --draft
-    fi
-
-    echo "Pushing the change"
-    git push -u origin HEAD
-
-    echo "PR already open (optionally I can add a notification here)"
-else
+if [[ -z "$pr_number" ]]; then
     echo "PR doesn't exist, creating a new one"
 
     echo "Pushing the change"
@@ -73,4 +57,19 @@ else
     gh pr create --title "Auto-PR $(date +%Y%d%d)" --body "Auto-generated update" --draft
 
     echo "PR open (optionally I can add a notification here)"
+else
+    echo "PR from this branch already exists (#$pr_number)" 
+
+    is_it_a_draft_pr=$(gh pr list --state open --head "$target_branch_name" --base master --json isDraft -q '.[] | select(.isDraft==true)' | grep -q .)
+    if [[ $"is_it_a_draft_pr" ]]; then
+        echo "It's a draft PR, no changes needed"
+    else
+        echo "It's not a draft PR, demoting it before push to avoid automatic DBT build that could spill PII data"
+        gh pr edit "$pr_number" --draft
+    fi
+
+    echo "Pushing the change"
+    git push -u origin HEAD
+
+    echo "PR already open (optionally I can add a notification here)"
 fi
