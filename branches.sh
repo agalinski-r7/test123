@@ -30,7 +30,7 @@ git checkout "$target_branch_name"
 # 
 ###############################################################################
 
-touch models/foo2
+touch models/foo3
 
 changes=$(git status models --porcelain)
 if [[ -z "$changes" ]]; then
@@ -43,7 +43,7 @@ git add models/
 git commit -m "PEA views automation: \n\nChanges:\n$changes"
 
 # ------------------
-echo "Checking if we have an existing PR to reuse"
+echo "Checking if we have an existing PR to reuse: $target_branch_name->master"
 
 pr_exists=$(gh pr list --state open --head "$target_branch_name" --base master  | grep -q .)
 
