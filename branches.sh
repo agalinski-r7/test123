@@ -22,7 +22,16 @@ fi
 
 git checkout "$target_branch_name"
 
+###############################################################################
 # 
+# this is where DBT changes happen (we want to start off with the target branch
+# to avoid any conflicts). In case of emergency we can always drop all branches
+# and all PRs, and execute process manually.
+# 
+###############################################################################
+
+touch models/foo1
+
 changes=$(git status models --porcelain)
 if [[ -z "$changes" ]]; then
     echo "No changes in models, nothing to commit - stopping execution"
