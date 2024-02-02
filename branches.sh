@@ -25,10 +25,14 @@ fi
 git checkout "$target_branch_name"
 
 # here comes execution (we base on )
-
-if [[ -z $(git status models --porcelain) ]]; then
-    echo "No changes in models, nothing to commit - ending"
+changes=$(git status models --porcelain)
+if [[ -z "$changes" ]]; then
+    echo "No changes in models, nothing to commit - stopping execution"
     exit 0
 fi
 
 echo "models changed, preparing commit"
+git add models/
+git commit -m "PEA views automation: \n\nChanges:\n$changes"
+
+
