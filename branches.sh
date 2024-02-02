@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 #
-#
-#
 
 pea_view_branches=$(git branch --list 'pea_view_automation*' | sed 's/^[* ] //' | sort -r )
 matching_branch_count=$(echo "$pea_view_branches" | grep -c .)
@@ -24,15 +22,46 @@ fi
 
 git checkout "$target_branch_name"
 
-# here comes execution (we base on )
+# 
 changes=$(git status models --porcelain)
 if [[ -z "$changes" ]]; then
     echo "No changes in models, nothing to commit - stopping execution"
     exit 0
 fi
 
-echo "models changed, preparing commit"
+echo "Models changed, committing change"
 git add models/
 git commit -m "PEA views automation: \n\nChanges:\n$changes"
 
+# ------------------
+echo "Checking if we have an existing PR to reuse"
 
+pr_exists=$(gh pr list --state open --head "$target_branch_name" --base master  | grep -q .)
+
+if [[ "$pr_exists" ]]; then
+    echo "PR from this branch already exists" 
+
+    is_it_a_draft_pr=$(gh pr list --state open --head "$target_branch_name" --base master --json isDraft -q '.[] | select(.isDraft==true)' | grep -q .)
+    if [[ $"is_it_a_draft_pr" ]]; then
+        echo "It's a draft PR, no changes needed"
+    else
+        echo "It's not a draft PR, demoting it before push to avoid automatic DBT build that could spill PII data"
+        pr_number=$(gh pr list --state open --head "$target_branch_name" --base master --json isDraft,number -q '.[] | select(.isDraft==true) | .number')
+        gh pr edit "$pr_number" --draft
+    fi
+
+    echo "Pushing the change"
+    git push -u origin HEAD
+
+    echo "PR already open (optionally I can add a notification here)"
+else
+    echo "PR doesn't exist, creating a new one"
+
+    echo "Pushing the change"
+    git push -u origin HEAD
+
+    echo "Creating a draft PR"
+    gh pr create --title "Auto-PR $(date +%Y%d%d)" --body "Auto-generated update" --draft
+
+    echo "PR open (optionally I can add a notification here)"
+fi
