@@ -11,12 +11,11 @@ load_dotenv()
 # Page configuration
 st.set_page_config(
     page_title="Snowflake Warehouse Usage",
-    page_icon="❄️",
     layout="wide"
 )
 
 # Title
-st.title("❄️ Snowflake Warehouse Usage Visualization")
+st.title("Snowflake Warehouse Usage Visualization")
 
 # Sidebar for configuration
 with st.sidebar:
@@ -94,7 +93,7 @@ def main():
         return
     
     # Display metrics
-    st.header("📊 Summary Metrics")
+    st.header("Summary Metrics")
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -110,7 +109,7 @@ def main():
         st.metric("Active Warehouses", unique_warehouses)
     
     # Visualizations
-    st.header("📈 Usage Trends")
+    st.header("Usage Trends")
     
     # Credits over time
     st.subheader("Credits Used Over Time")
@@ -124,7 +123,7 @@ def main():
     st.bar_chart(warehouse_credits.set_index('WAREHOUSE_NAME'))
     
     # Raw data
-    st.header("📋 Detailed Data")
+    st.header("Detailed Data")
     st.dataframe(
         df.sort_values('DATE', ascending=False),
         use_container_width=True,
