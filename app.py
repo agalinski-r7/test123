@@ -1,8 +1,7 @@
 import streamlit as st
-import snowflake.connector
+from snowflake.snowpark import Session
 from dotenv import load_dotenv
 import os
-import pandas as pd
 from datetime import datetime, timedelta
 
 # Load environment variables
@@ -26,26 +25,27 @@ with st.sidebar:
 
 # Function to connect to Snowflake
 @st.cache_resource
-def get_snowflake_connection():
-    """Create a connection to Snowflake using externalbrowser authenticator"""
+def get_snowflake_session():
+    """Create a Snowpark session to Snowflake using externalbrowser authenticator"""
     try:
-        conn = snowflake.connector.connect(
-            account=os.getenv('SNOWFLAKE_ACCOUNT'),
-            user=os.getenv('SNOWFLAKE_USER'),
-            authenticator='externalbrowser',
-            warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
-            database=os.getenv('SNOWFLAKE_DATABASE'),
-            schema=os.getenv('SNOWFLAKE_SCHEMA'),
-            role=os.getenv('SNOWFLAKE_ROLE')
-        )
-        return conn
+        connection_parameters = {
+            "account": os.getenv('SNOWFLAKE_ACCOUNT'),
+            "user": os.getenv('SNOWFLAKE_USER'),
+            "authenticator": "externalbrowser",
+            "warehouse": os.getenv('SNOWFLAKE_WAREHOUSE'),
+            "database": os.getenv('SNOWFLAKE_DATABASE'),
+            "schema": os.getenv('SNOWFLAKE_SCHEMA'),
+            "role": os.getenv('SNOWFLAKE_ROLE')
+        }
+        session = Session.builder.configs(connection_parameters).create()
+        return session
     except Exception as e:
         st.error(f"Failed to connect to Snowflake: {str(e)}")
         return None
 
 # Function to query warehouse usage
-def get_warehouse_usage(conn, days):
-    """Query warehouse usage from Snowflake for the last N days"""
+def get_warehouse_usage(session, days):
+    """Query warehouse usage from Snowflake for the last N days using Snowpark"""
     try:
         query = f"""
         SELECT 
@@ -59,15 +59,9 @@ def get_warehouse_usage(conn, days):
         ORDER BY DATE DESC, TOTAL_CREDITS DESC
         """
         
-        cursor = conn.cursor()
-        cursor.execute(query)
+        # Execute query using Snowpark and convert to pandas DataFrame
+        df = session.sql(query).to_pandas()
         
-        # Fetch results and convert to DataFrame
-        results = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        df = pd.DataFrame(results, columns=columns)
-        
-        cursor.close()
         return df
     except Exception as e:
         st.error(f"Failed to query warehouse usage: {str(e)}")
@@ -77,16 +71,16 @@ def get_warehouse_usage(conn, days):
 def main():
     # Connect to Snowflake
     with st.spinner("Connecting to Snowflake..."):
-        conn = get_snowflake_connection()
+        session = get_snowflake_session()
     
-    if conn is None:
+    if session is None:
         st.warning("Please configure your Snowflake connection in the .env file")
         st.info("Required variables: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_WAREHOUSE, SNOWFLAKE_DATABASE, SNOWFLAKE_SCHEMA, SNOWFLAKE_ROLE")
         return
     
     # Query warehouse usage
     with st.spinner(f"Fetching warehouse usage for the last {days} days..."):
-        df = get_warehouse_usage(conn, days)
+        df = get_warehouse_usage(session, days)
     
     if df is None or df.empty:
         st.warning("No warehouse usage data found for the selected period.")
